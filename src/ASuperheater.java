@@ -16,7 +16,9 @@ import javax.imageio.ImageIO;
 
 import sun.misc.BASE64Decoder;
 
+import com.quirlion.accessors.NPC;
 import com.quirlion.script.Script;
+import com.quirlion.script.types.Inventory;
 
 public class ASuperheater extends Script {
 	private int superheaterCasts = 0, moneyMade = 0;
@@ -81,6 +83,47 @@ public class ASuperheater extends Script {
 	
 	public int loop() {
 		//Parent 192, Child 50
+		//561 -nat
+		//440 -iron
+		//453 -coal
+		
+		int[] ironID = { 440 };
+		int[] natureID = { 561 };
+		int[] coalID = { 453 };
+		
+		if(tabs.getCurrentTab() != 7) tabs.openTab(7);
+		
+		if(inventory.findItems(ironID).length != 9 && inventory.findItems(coalID).length != 18 && inventory.findItems(natureID).length != 1) {
+			com.quirlion.script.types.NPC banker = bank.getNearestBanker();
+			
+			if(banker != null) {
+				boolean timeout = false;
+				long finishTime = System.currentTimeMillis() + 3000;
+				while(input.getBotMousePosition().x != banker.getAbsLoc().X && input.getBotMousePosition().y != banker.getAbsLoc().Y && !timeout) {
+					input.moveMouse(banker.getAbsLoc().X, banker.getAbsLoc().Y);
+					if(System.currentTimeMillis() >= finishTime) timeout = true;
+				}
+				
+				banker.click("bank");
+				
+				timeout = false;
+				finishTime = System.currentTimeMillis() + 3000;
+				while(!bank.isOpen() && !timeout) {
+					if(System.currentTimeMillis() >= finishTime) timeout = true;
+				}
+				
+				bank.depositAllExcept(561);
+				
+				finishTime = System.currentTimeMillis() + 1000;
+				while(!timeout) if(System.currentTimeMillis() >= finishTime) timeout = true;
+				
+				
+			}
+		} else {
+			//Smelt It
+		}
+		
+		
 		return 1;
 	}
 	
