@@ -28,9 +28,9 @@ public class ASuperheater extends Script {
 
 	public void onStart() {
 		try {
-			clockImage = ImageIO.read(new URL("http://scripts.allometry.com/icons/clock.png"));
-			moneyImage = ImageIO.read(new URL("http://scripts.allometry.com/icons/money.png"));
-			wandImage = ImageIO.read(new URL("http://scripts.allometry.com/icons/wand.png"));
+			clockImage = ImageIO.read(new URL("http://scripts.allometry.com/app/webroot/icons/clock.png"));
+			moneyImage = ImageIO.read(new URL("http://scripts.allometry.com/app/webroot/icons/money.png"));
+			wandImage = ImageIO.read(new URL("http://scripts.allometry.com/app/webroot/icons/wand.png"));
 		} catch (IOException e) {
 			logStackTrace(e);
 		}
