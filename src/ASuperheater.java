@@ -16,16 +16,17 @@ import javax.imageio.ImageIO;
 import com.quirlion.script.Constants;
 import com.quirlion.script.Script;
 import com.quirlion.script.types.GEItem;
-import com.quirlion.script.types.Magic;
-import com.quirlion.script.types.Thing;
+import com.quirlion.script.types.Interface;
+import com.quirlion.script.types.InterfaceComponent;
+import com.quirlion.script.types.NPC;
 
 public class ASuperheater extends Script {
 	private int superheaterCasts = 0, steelBarPrice = 0;
 	private long startTime;
 	private Image clockImage, moneyImage, wandImage;
+	private NPC banker;
 
 	public void onStart() {
-		log("Loading images from the web");
 		try {
 			clockImage = ImageIO.read(new URL("http://scripts.allometry.com/icons/clock.png"));
 			moneyImage = ImageIO.read(new URL("http://scripts.allometry.com/icons/money.png"));
@@ -34,65 +35,88 @@ public class ASuperheater extends Script {
 			logStackTrace(e);
 		}
 		
-		log("Gathering current market price for steel");
 		GEItem steelBar = ge.getInfoForItem(2353);
 		steelBarPrice = steelBar.getMarketPrice();
-		log("Steel bar market price is " + new Integer(steelBarPrice).toString());
-		
-		log("Setting start time");
 		startTime = System.currentTimeMillis();
 		
-		Constants.WAIT = 3000;
+		Constants.WAIT = 1500;
+		
+		banker = bank.getNearestBanker();
 	}
 	
 	public boolean timeout(long timeout) {		
 		return System.currentTimeMillis() <= timeout;
 	}
 	
+	private boolean isMouseInArea(int tX, int bX, int tY, int bY) {
+		int x = input.getBotMousePosition().x;
+		int y = input.getBotMousePosition().y;
+		
+		return (x > tX && x < bX && y < tY && y > bY);
+	}
+	
 	public int loop() {
 		int coalID = 453;
 		int ironOreID = 440;
 		int natureRuneID = 561;
-		int steelBarID = 2353;
 		
-		Thing bankBooth = bank.getNearestBooth();
+		if(!banker.isOnScreen()) {
+			walker.walkTileMM(banker.getLocation());
+		}
 		
-		if(inventory.getCount(coalID) >= 2 && inventory.getCount(ironOreID) >= 1 && inventory.getCount(natureRuneID) >= 1 && !bank.isOpen()) {
+		if(inventory.getCount(coalID) >= 2 && inventory.getCount(ironOreID) >= 1 && inventory.getCount(natureRuneID) >= 1) {
+			if(bank.isOpen()) bank.close();
 			if(tabs.getCurrentTab() != Constants.TAB_MAGIC) tabs.openTab(Constants.TAB_MAGIC);
-								
-			Magic.SpellReq requirements[] = {};
-			Magic.Spell superheat = magic.new Spell(Constants.INTERFACE_TAB_MAGIC, Constants.SPELL_SUPERHEAT_ITEM, 43, requirements);
-			superheat.castOn(ironOreID);
-						
-			superheaterCasts++;
 			
-			return 1500;
+			Interface superheatInterface = interfaces.get(Constants.INTERFACE_TAB_MAGIC, Constants.SPELL_SUPERHEAT_ITEM);
+			
+			while(!isMouseInArea(superheatInterface.getRealX(), superheatInterface.getRealX() + superheatInterface.getWidth(), superheatInterface.getRealY(), superheatInterface.getRealY() - superheatInterface.getHeight())) {
+				input.moveMouse(superheatInterface.getRealX() + (superheatInterface.getWidth() / 2), superheatInterface.getRealY() - (superheatInterface.getHeight() / 2));
+			}
+			
+			superheatInterface.click();
+			wait(750);
+			
+			if(inventory.clickItem(ironOreID)) superheaterCasts++;
+			
+			return 1000;
 		}
 		
 		tabs.openTab(Constants.TAB_INVENTORY);
-		if((inventory.getCount(coalID) == 0 || inventory.getCount(ironOreID) == 0) && !bank.isOpen()) {			
-			bankBooth.click("Quickly");
+		if(((inventory.getCount(coalID) == 0 || inventory.getCount(ironOreID) == 0) || (inventory.getCount(coalID) <= 2 && inventory.getCount(ironOreID) <= 1)) && !bank.isOpen()) {
+			input.moveMouse(banker.getAbsLoc().X, banker.getAbsLoc().Y);
+			banker.click("Bank Banker");
+			
 			return 3000;
 		}
 		
-		if((inventory.getCount(coalID) == 0 || inventory.getCount(ironOreID) == 0) && bank.isOpen()) {
-			if(inventory.getCount(steelBarID) > 0) {
-				bank.deposit(steelBarID, 0);
-				return 2000;
+		if((inventory.getCount(coalID) <= 2 || inventory.getCount(ironOreID) <= 1) && bank.isOpen()) {
+			if(inventory.getCountExcept(ironOreID, natureRuneID, coalID) > 0) {
+				bank.depositAllExcept(natureRuneID);
+				wait(2000);
 			}
 			
-			if(inventory.getCount(ironOreID) == 0) {
-				bank.withdraw(ironOreID, 9);
-				return 2000;
+			if(inventory.getCount(ironOreID) <= 9) {
+				InterfaceComponent ironOre = bank.getItem(ironOreID);
+				
+				while(!isMouseInArea(ironOre.getRealX(), ironOre.getRealX() + ironOre.getWidth(), ironOre.getRealY(), ironOre.getRealY() - ironOre.getHeight())) {
+					input.moveMouse(ironOre.getRealX() + (ironOre.getWidth() / 2), ironOre.getRealY() - (ironOre.getHeight() / 2));
+				}
+				
+				bank.withdraw(ironOreID, 9 - inventory.getCount(ironOreID));
+				wait(2000);
 			}
 			
-			if(inventory.getCount(coalID) == 0) {	
-				bank.withdraw(coalID, 18);
-				return 2000;
+			if(inventory.getCount(coalID) <= 18) {
+				InterfaceComponent coal = bank.getItem(coalID);
+				
+				while(!isMouseInArea(coal.getRealX(), coal.getRealX() + coal.getWidth(), coal.getRealY(), coal.getRealY() - coal.getHeight())) {
+					input.moveMouse(coal.getRealX() + (coal.getWidth() / 2), coal.getRealY() - (coal.getHeight() / 2));
+				}
+				
+				bank.withdraw(coalID, 18 - inventory.getCount(coalID));
+				wait(2000);
 			}
-		} else if(bank.isOpen()) {
-			bank.close();
-			return 1000;
 		}
 		
 		return 1;
